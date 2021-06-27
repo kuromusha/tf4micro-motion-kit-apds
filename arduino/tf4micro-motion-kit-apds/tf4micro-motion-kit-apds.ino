@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+/* Copyright (C) 2021 Ken'ichi Kuromusha modified, Apache License 2.0
+==============================================================================*/
 
 /*
 * @author Rikard Lindstrom <rlindsrom@google.com>
@@ -38,7 +40,6 @@ enum State
   INFERENCE,                  // Inference is happening and published
   IMU_DATA_PROVIDER,          // Send IMU data over BLE for IMU Trainer
   ERROR_STATE,                // Something went wrong,
-  CALIBRATION,                // Calibrate Magnetometer position
   INFERENCE_AND_DATA_PROVIDER // both inference and IMU Data
 };
 
@@ -56,15 +57,14 @@ FileTransferType fileTransferType = MODEL_FILE;
 /************************************************************************
 * Globals / General
 ************************************************************************/
-bool useMagnetometer = false; // Can be toggled with BLE (disableMagnetometerRx)
 
 /************************************************************************
 * BLE Characteristic / Service UUIDs
 ************************************************************************/
 
-#define LOCAL_NAME "TF4Micro - Motion Kit"
+#define LOCAL_NAME "Motion Kit for APDS"
 
-#define UUID_GEN(val) ("81c30e5c-" val "-4f7d-a886-de3e90749161")
+#define UUID_GEN(val) ("f0084b9f-" val "-4c63-a313-fe122b555baf")
 
 BLEService                      service                   (UUID_GEN("0000"));
 
@@ -173,10 +173,6 @@ void updateLed()
     showErrorLed();
     break;
 
-  case CALIBRATION:
-    millis() % 100 > 50 ? rgbLedOff() : rgbLedGreen();
-    break;
-
   case IDLE_DISCONNECTED:
   case IDLE_CONNECTED:
   default:
@@ -238,10 +234,6 @@ void setState(State state)
   case ERROR_STATE:
     Serial.println("state is now ERROR_STATE");
     break;
-  case CALIBRATION:
-    data_provider::calibrate();
-    Serial.println("state is now CALIBRATION");
-    break;
   case INFERENCE_AND_DATA_PROVIDER:
     Serial.println("state is now INFERENCE_AND_DATA_PROVIDER");
     break;
@@ -282,17 +274,6 @@ void handleNumClassesRxWritten(BLEDevice central, BLECharacteristic characterist
   Serial.println(numClassesRxChar.value());
 }
 
-void handleDisableMagnetometerRxWritten(BLEDevice central, BLECharacteristic characteristic)
-{
-  bool val = disableMagnetometerRx.value();
-  model_tester::setDisableMagnetometer(val);
-
-  useMagnetometer = !val;
-  
-  Serial.print("Received disableMagnetometer: ");
-  Serial.println(disableMagnetometerRx.value());
-}
-
 void handleStateWritten(BLEDevice central, BLECharacteristic characteristic)
 {
   setState((State)stateRxChar.value());
@@ -330,11 +311,6 @@ void model_tester_onInference(unsigned char classIndex, unsigned char score, uns
   Serial.println(score);
 }
 
-// called when calibration completes
-void data_provider_calibrationComplete(){
-  setState(prevState);
-}
-
 // called on file transfer complete
 void onBLEFileReceived(uint8_t *file_data, int file_length)
 {
@@ -348,7 +324,7 @@ void onBLEFileReceived(uint8_t *file_data, int file_length)
     case TEST_FILE:
     {
       int floatLength = file_length / 4;
-      float buffer[floatLength];
+      float *buffer = (float*)malloc(sizeof(float) * floatLength);
       for (int i = 0; i < file_length; i += 4)
       {
         union u_tag
@@ -367,6 +343,7 @@ void onBLEFileReceived(uint8_t *file_data, int file_length)
       // set state to inference so we can capture result
       setState(INFERENCE);
       model_tester::runTest(buffer, floatLength);
+      free(buffer);
     }
     break;
     default:
@@ -399,7 +376,7 @@ void setup()
   // Start IMU / Data provider.
   if (!data_provider::setup())
   {
-    Serial.println("Failed to initialize IMU!");
+    Serial.println("Failed to initialize APDS!");
     while (1) showErrorLed();
   }
 
@@ -430,7 +407,6 @@ void setup()
   stateRxChar.setEventHandler(BLEWritten, handleStateWritten);
   fileTransferTypeRxChar.setEventHandler(BLEWritten, handleFileTransferTypeWritten);
   metaRxChar.setEventHandler(BLEWritten, handleMetaWritten);
-  disableMagnetometerRx.setEventHandler(BLEWritten, handleDisableMagnetometerRxWritten);
 
   // Start the core BLE engine.
   if (!BLE.begin())
@@ -487,17 +463,17 @@ void setup()
   versionTxChar.writeValue(VERSION);
 
   // Used for Tiny Motion Trainer to label / filter values
-  dataProviderLabelsTxChar.writeValue("acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, mag.x, mag.y, max.zl");
+  dataProviderLabelsTxChar.writeValue("proximity, gesture, color.h, color.s, color.v");
 }
 
 inline void updateIMU()
 {
-  const char bufferSize = useMagnetometer ? 9 : 6;
+  const char bufferSize = data_provider::BUFFUER_LENGTH;
   float buffer[bufferSize];
-  while(data_provider::dataAvailable()){
+  {
 
     // Collect the IMU data
-    data_provider::update(buffer, useMagnetometer);
+    data_provider::update(buffer);
  
     if(currentState == INFERENCE || currentState == INFERENCE_AND_DATA_PROVIDER){
       // if we have a model, do inference
@@ -545,7 +521,6 @@ void loop()
       updateFileTransfer();
       break;
 
-    case CALIBRATION:
     case IMU_DATA_PROVIDER:
     case INFERENCE_AND_DATA_PROVIDER:
     case INFERENCE:

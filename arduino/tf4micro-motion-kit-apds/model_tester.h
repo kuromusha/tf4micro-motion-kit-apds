@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+/* Copyright (C) 2021 Ken'ichi Kuromusha modified, Apache License 2.0
+==============================================================================*/
 
 #ifndef MODEL_TESTER_CPP
 #define MODEL_TESTER_CPP
@@ -36,7 +38,6 @@ namespace model_tester {
   void setNumSamples(int val);
   void setThreshold(float val);
   void setNumClasses(unsigned char val);
-  void setDisableMagnetometer(bool val);
   void runTest(float *testData, int len);
 }
 

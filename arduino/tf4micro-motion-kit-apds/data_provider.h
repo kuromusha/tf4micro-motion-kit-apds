@@ -12,18 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+/* Copyright (C) 2021 Ken'ichi Kuromusha modified, Apache License 2.0
+==============================================================================*/
 
 #ifndef DATA_PROVIDER_CPP
 #define DATA_PROVIDER_CPP
 
-// Forward declare the function that will be called when data has been delivered to us.
-void data_provider_calibrationComplete();
-
 namespace data_provider {
   bool setup();
-  void update(float* buffer, bool useMagnetometer);
-  void calibrate();
+  void update(float* buffer);
   bool dataAvailable();
+  const int BUFFUER_LENGTH = 5;
+  const int filter[BUFFUER_LENGTH] = {1, 0, 0, 0, 0};
+  const int FILTER_NUM = 1;
 }
 
 #endif

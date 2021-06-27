@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+/* Copyright (C) 2021 Ken'ichi Kuromusha modified, Apache License 2.0
+==============================================================================*/
 
 /* 
  *  Namespaced methods for loading a TF model and running inference
@@ -20,6 +22,7 @@ limitations under the License.
 #include "model_tester.h"
 #include <Arduino.h>
 #include <ArduinoBLE.h>
+#include "data_provider.h"
 
 namespace model_tester
 {
@@ -33,7 +36,6 @@ namespace model_tester
   float accelerationThreshold = 0.167;
   int captureDelay = 125;
   unsigned char numClasses = 3;
-  bool disableMagnetometer = false;
   
   float maxVelocity = 0.;
   int lastCaptureTimestamp = 0;
@@ -81,10 +83,6 @@ namespace model_tester
 
   void setNumClasses(unsigned char val){
     numClasses = val;
-  }
-
-   void setDisableMagnetometer(bool val){
-    disableMagnetometer = val;
   }
 
 /************************************************************************
@@ -136,14 +134,19 @@ namespace model_tester
         return;  
       }
       
-      const float aSum = (fabs(buffer[0]) + fabs(buffer[1]) + fabs(buffer[2]) + fabs(buffer[3]) + fabs(buffer[4]) + fabs(buffer[5])) / 6.0;
+      float aSum = 0;
+      for(int i = 0; i < data_provider::BUFFUER_LENGTH; i++)
+      {
+        aSum += fabs(buffer[i] * data_provider::filter[i]);
+      }
+      aSum /= data_provider::FILTER_NUM;
 
       // check if it's above the threshold
       if (aSum >= accelerationThreshold)
       {
         #ifdef DEBUG
         Serial.println("Capture started:");
-        Serial.println("ax,ay,az,gx,gy,gz,mx,my,mz");
+        Serial.println("proximity, gesture, color.h, color.s, color.v");
         #endif
         
         // reset the sample read count
@@ -154,7 +157,7 @@ namespace model_tester
 
     if (samplesRead < numSamples)
     {  
-      const int dataLen = disableMagnetometer ? 6 : 9;
+      const int dataLen = data_provider::BUFFUER_LENGTH;
 
       #ifdef DEBUG
       for(int j = 0; j < dataLen; j++){
@@ -169,16 +172,8 @@ namespace model_tester
       const float velocity = (fabs(buffer[0]) + fabs(buffer[1]) + fabs(buffer[2])) / 3.0; 
       maxVelocity = max(maxVelocity, velocity);
 
-      tflInputTensor->data.f[samplesRead * dataLen + 0] = buffer[0];
-      tflInputTensor->data.f[samplesRead * dataLen + 1] = buffer[1];
-      tflInputTensor->data.f[samplesRead * dataLen + 2] = buffer[2];
-      tflInputTensor->data.f[samplesRead * dataLen + 3] = buffer[3];
-      tflInputTensor->data.f[samplesRead * dataLen + 4] = buffer[4];
-      tflInputTensor->data.f[samplesRead * dataLen + 5] = buffer[5];
-      if(!disableMagnetometer){
-        tflInputTensor->data.f[samplesRead * dataLen + 6] = buffer[6];
-        tflInputTensor->data.f[samplesRead * dataLen + 7] = buffer[7];
-        tflInputTensor->data.f[samplesRead * dataLen + 8] = buffer[8];
+      for(int i = 0; i < dataLen; i++){
+        tflInputTensor->data.f[samplesRead * dataLen + i] = buffer[i];
       }
 
       samplesRead++;
@@ -233,39 +228,14 @@ namespace model_tester
   }
 
   void runTest(float *data, int len){
-    const int numTests = len / numSamples;
-    const int dataLen = disableMagnetometer ? 6 : 9;
+    const int dataLen = data_provider::BUFFUER_LENGTH;
     samplesRead = numSamples;
-    const int tmpCaptureDelay = captureDelay;
-    captureDelay = 0;
     for(int i = 0; i < len; i+= dataLen){
-      if(disableMagnetometer){
-        float buffer[] = {
-          data[i + 0],
-          data[i + 1],
-          data[i + 2],
-          data[i + 3],
-          data[i + 4],
-          data[i + 5]
-        };
-        update(buffer);
-      } else {
-        float buffer[] = {
-          data[i + 0],
-          data[i + 1],
-          data[i + 2],
-          data[i + 3],
-          data[i + 4],
-          data[i + 5],
-          data[i + 6],
-          data[i + 7],
-          data[i + 8]
-        };
-              
-        //update(buffer);
+      float buffer[dataLen];
+      for(int j = 0; j < dataLen; j++){
+        buffer[j] = data[i + j];
       }
+      update(buffer);
     }
-
-    captureDelay = tmpCaptureDelay;
   }
 }
