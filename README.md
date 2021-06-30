@@ -8,25 +8,28 @@ This repo contains the Arduino Sketch for using APDS based on the original codes
 
 1. Install the [Arduino IDE ](https://www.arduino.cc/en/software "Arduino IDE")
 
-2. Setup Arduino board:
-- Plug in the board
-- Install the board by navigating to Tools > Board > Boards Manager and search for  Arduino Mbed OS Nano Boards.
-- After the board is installed, select it under to Tools > Board >  Arduino Mbed OS Nano Boards > Arduino Nano 33 BLE
-- Select the port by navigating to Tools -> Port -> ... (Arduino Nano 33 BLE)
+1. Setup Arduino board:
+    - Plug in the board
+    - Install the board by navigating to Tools > Board > Boards Manager and search for  Arduino Mbed OS Nano Boards.
+    - After the board is installed, select it under to Tools > Board >  Arduino Mbed OS Nano Boards > Arduino Nano 33 BLE
+    - Select the port by navigating to Tools -> Port -> ... (Arduino Nano 33 BLE)
 
-3. Install Arduino libraries 
-- Navigate to Tools > Manage Libraries
-- Search for and install:  
-Arduino_APDS9960  
-ArduinoBLE  
-Arduino_TensorFlowLite
+1. Install Arduino libraries 
+    - Navigate to Tools > Manage Libraries
+    - Search for and install:  
+        - Arduino_APDS9960  
+        - ArduinoBLE  
+        - Arduino_TensorFlowLite
 
-4. Open the sketch and flash
-- Download the latest release [here](https://github.com/kuromusha/tf4micro-motion-kit-apds/releases/latest)
-- Open the **arduino/tf4micro-motion-kit-apds** <folder> and double click on <tf4micro-motion-kit-apds.ino> file
-- Click the Right arrow in the top left corner to build and upload the sketch.  
- - **Warning**: This process may take a few minutes. Also, warnings may populate but the upload should still succeed in spite of them.
-- If the sketch is installed, the LED on the board should flash red and green. 
+1. Open the sketch and flash
+    - Download the latest release [here](https://github.com/kuromusha/tf4micro-motion-kit-apds/releases/latest)
+    - Open the **arduino/tf4micro-motion-kit-apds** <folder> and double click on <tf4micro-motion-kit-apds.ino> file
+    - Click the Right arrow in the top left corner to build and upload the sketch.  
+    - **Warning**: This process may take a few minutes. Also, warnings may populate but the upload should still succeed in spite of them.
+    - If the sketch is installed, the LED on the board should flash red and green. 
+
+1. Go to:
+    - [1-2 Finger Gesture Detection](https://github.com/kuromusha/1-2-finger-gesture-detection)
 
 ---
 
